@@ -136,7 +136,7 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 //
 
 func main() {
-	cmd := exec.Command("python3", "./py-scripts/displays.py")
+	cmd := exec.Command("python3", "./py-scripts/displays_linux.py")
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("Error running Python script: %v", err)
