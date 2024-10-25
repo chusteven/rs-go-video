@@ -10,8 +10,12 @@ def list_displays():
     displays = []
     screen_id = 1
 
+    #monitor_info = re.findall(
+    #    r" (\d+): \+(\S+) (\d+)/(\d+)x(\d+)/(\d+) \+(\d+)\+(\d+)", output
+    #)
+
     monitor_info = re.findall(
-        r" (\d+): \+(\S+) (\d+)/(\d+)x(\d+)/(\d+) \+(\d+)\+(\d+)", output
+        r" (\d+): \+(\S+) (\d+)/(\d+)x(\d+)/(\d+)\+(\d+)\+(\d+)", output
     )
     for idx, match in enumerate(monitor_info):
         width = float(match[2])
