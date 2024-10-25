@@ -106,6 +106,7 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("--width=%f", display.Width),
 			fmt.Sprintf("--height=%f", display.Height),
 			"--video-on-top",
+			"--fullscreen",
 			"--no-video-deco",
 			"--key-intf-show=false",
 			"--play-and-exit",
