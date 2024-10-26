@@ -13,7 +13,8 @@ import (
 // 	Constants
 //
 
-//const VLC_BINARY = "/Applications/VLC.app/Contents/MacOS/VLC"
+// const VLC_BINARY = "/Applications/VLC.app/Contents/MacOS/VLC"
+
 const VLC_BINARY = "/usr/bin/vlc"
 
 // ----------------------------------------------------------------------------
@@ -137,7 +138,7 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 //
 
 func main() {
-	cmd := exec.Command("python", "./py-scripts/display_linux.py")
+	cmd := exec.Command("python", "./py-scripts/displays_linux.py")
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("Error running Python script: %v", err)
@@ -155,7 +156,7 @@ func main() {
 	state := &App{
 		Displays:     displays,
 		DisplayLocks: displayLocks,
-		Videos:       []string{"./jesus.webm"},
+		Videos:       []string{"./videos/jesus.webm"},
 	}
 
 	http.HandleFunc("/", state.indexHandler)
