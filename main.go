@@ -24,7 +24,7 @@ const VLC_BINARY = "/usr/bin/vlc"
 type App struct {
 	Videos       []string
 	Displays     map[int]Display
-	DisplayLocks map[int]*Mutex
+	DisplayLocks map[int]*VideoRunner
 }
 
 type Message struct {
@@ -93,34 +93,10 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lock, _ := a.DisplayLocks[screenId]
-	if lock.IsLocked() { // TODO (stevenchu): I think I'm not supposed to do this because of race conditions
+	if !lock.playVideo(videoReq.Video, display) {
 		http.Error(w, fmt.Sprintf("Screen %d is currently playing a video", screenId), http.StatusBadRequest)
 		return
 	}
-
-	lock.Lock()
-	go func(video string, display Display, mut *Mutex) error {
-		cmd := exec.Command(
-			VLC_BINARY,
-			video,
-			fmt.Sprintf("--video-x=%f", display.OriginX),
-			fmt.Sprintf("--video-y=%f", display.OriginY),
-			fmt.Sprintf("--width=%f", display.Width),
-			fmt.Sprintf("--height=%f", display.Height),
-			"--video-on-top",
-			"--fullscreen",
-			"--no-video-deco",
-			"--key-intf-show=false",
-			"--play-and-exit",
-		)
-		err := cmd.Run()
-		if err != nil {
-			log.Printf("Error running VLC: %v", err)
-			return err
-		}
-		mut.Unlock()
-		return nil
-	}(videoReq.Video, display, lock)
 
 	msg := fmt.Sprintf("playing video %s on screen %d", videoReq.Video, videoReq.ScreenID)
 	response := Message{
@@ -148,10 +124,10 @@ func main() {
 		log.Fatalf("Error unmarshaling JSON: %v", err)
 	}
 	displays := make(map[int]Display)
-	displayLocks := make(map[int]*Mutex)
+	displayLocks := make(map[int]*VideoRunner)
 	for _, d := range displaySlice {
 		displays[d.ScreenID] = d
-		displayLocks[d.ScreenID] = &Mutex{}
+		displayLocks[d.ScreenID] = &VideoRunner{}
 	}
 	state := &App{
 		Displays:     displays,
@@ -172,21 +148,39 @@ func main() {
 // 	Utility structs
 //
 
-type Mutex struct {
-	mu     sync.Mutex
-	locked bool
+type VideoRunner struct {
+	mx      sync.Mutex
+	running bool
 }
 
-func (m *Mutex) Lock() {
-	m.mu.Lock()
-	m.locked = true
-}
+func (t *VideoRunner) playVideo(video string, display Display) bool {
+	t.mx.Lock()
+	if t.running {
+		t.mx.Unlock()
+		return false
+	}
+	t.running = true
+	t.mx.Unlock()
 
-func (m *Mutex) Unlock() {
-	m.locked = false
-	m.mu.Unlock()
-}
+	cmd := exec.Command(
+		VLC_BINARY,
+		video,
+		fmt.Sprintf("--video-x=%f", display.OriginX),
+		fmt.Sprintf("--video-y=%f", display.OriginY),
+		fmt.Sprintf("--width=%f", display.Width),
+		fmt.Sprintf("--height=%f", display.Height),
+		"--video-on-top",
+		"--fullscreen",
+		"--no-video-deco",
+		"--key-intf-show=false",
+		"--play-and-exit",
+	)
+	if err := cmd.Run(); err != nil {
+		log.Printf("Error running VLC: %v", err)
+	}
 
-func (m *Mutex) IsLocked() bool {
-	return m.locked
+	t.mx.Lock()
+	t.running = false
+	t.mx.Unlock()
+	return true
 }
