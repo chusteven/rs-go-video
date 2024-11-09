@@ -16,7 +16,7 @@ import (
 
 type App struct {
 	Displays      map[int]Display
-	DisplayLocks  map[int]*VideoRunner
+	VideoRunners  map[int]*VideoRunner
 	Videos        []string
 	VLCBinaryPath string
 }
@@ -81,12 +81,12 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 
 	screenId := videoReq.ScreenID
 	display := a.Displays[screenId]
-	if _, ok := a.DisplayLocks[screenId]; !ok {
+	if _, ok := a.VideoRunners[screenId]; !ok {
 		http.Error(w, fmt.Sprintf("Locks for screen %d do not exist. Danger!", screenId), http.StatusInternalServerError)
 		return
 	}
 
-	lock, _ := a.DisplayLocks[screenId]
+	lock, _ := a.VideoRunners[screenId]
 	if !lock.playVideo(a.VLCBinaryPath, videoReq.Video, display) {
 		http.Error(w, fmt.Sprintf("Screen %d is currently playing a video", screenId), http.StatusBadRequest)
 		return
@@ -127,14 +127,14 @@ func main() {
 		log.Fatalf("Error unmarshaling JSON: %v", err)
 	}
 	displays := make(map[int]Display)
-	displayLocks := make(map[int]*VideoRunner)
+	videoRunners := make(map[int]*VideoRunner)
 	for _, d := range displaySlice {
 		displays[d.ScreenID] = d
-		displayLocks[d.ScreenID] = &VideoRunner{}
+		videoRunners[d.ScreenID] = &VideoRunner{}
 	}
 	state := &App{
 		Displays:      displays,
-		DisplayLocks:  displayLocks,
+		VideoRunners:  videoRunners,
 		Videos:        []string{"./videos/jesus.webm"},
 		VLCBinaryPath: vlcBinaryPath,
 	}
