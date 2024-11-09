@@ -6,25 +6,19 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"runtime"
 	"sync"
 )
-
-// ----------------------------------------------------------------------------
-// 	Constants
-//
-
-// const VLC_BINARY = "/Applications/VLC.app/Contents/MacOS/VLC"
-
-const VLC_BINARY = "/usr/bin/vlc"
 
 // ----------------------------------------------------------------------------
 // 	Structs
 //
 
 type App struct {
-	Videos       []string
-	Displays     map[int]Display
-	DisplayLocks map[int]*VideoRunner
+	Displays      map[int]Display
+	DisplayLocks  map[int]*VideoRunner
+	Videos        []string
+	VLCBinaryPath string
 }
 
 type Message struct {
@@ -93,7 +87,7 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lock, _ := a.DisplayLocks[screenId]
-	if !lock.playVideo(videoReq.Video, display) {
+	if !lock.playVideo(a.VLCBinaryPath, videoReq.Video, display) {
 		http.Error(w, fmt.Sprintf("Screen %d is currently playing a video", screenId), http.StatusBadRequest)
 		return
 	}
@@ -114,7 +108,16 @@ func (a *App) playVideo(w http.ResponseWriter, r *http.Request) {
 //
 
 func main() {
-	cmd := exec.Command("python", "./py-scripts/displays_linux.py")
+	cmd := exec.Command("python", "./py-scripts/displays_mac.py")
+	if runtime.GOOS != "darwin" {
+		cmd = exec.Command("python", "./py-scripts/displays_linux.py")
+	}
+
+	vlcBinaryPath := "/Applications/VLC.app/Contents/MacOS/VLC"
+	if runtime.GOOS != "darwin" {
+		vlcBinaryPath = "/usr/bin/vlc"
+	}
+
 	output, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("Error running Python script: %v", err)
@@ -130,9 +133,10 @@ func main() {
 		displayLocks[d.ScreenID] = &VideoRunner{}
 	}
 	state := &App{
-		Displays:     displays,
-		DisplayLocks: displayLocks,
-		Videos:       []string{"./videos/jesus.webm"},
+		Displays:      displays,
+		DisplayLocks:  displayLocks,
+		Videos:        []string{"./videos/jesus.webm"},
+		VLCBinaryPath: vlcBinaryPath,
 	}
 
 	http.HandleFunc("/", state.indexHandler)
@@ -153,7 +157,7 @@ type VideoRunner struct {
 	running bool
 }
 
-func (t *VideoRunner) playVideo(video string, display Display) bool {
+func (t *VideoRunner) playVideo(vlcBinaryPath string, video string, display Display) bool {
 	t.mx.Lock()
 	if t.running {
 		t.mx.Unlock()
@@ -162,25 +166,27 @@ func (t *VideoRunner) playVideo(video string, display Display) bool {
 	t.running = true
 	t.mx.Unlock()
 
-	cmd := exec.Command(
-		VLC_BINARY,
-		video,
-		fmt.Sprintf("--video-x=%f", display.OriginX),
-		fmt.Sprintf("--video-y=%f", display.OriginY),
-		fmt.Sprintf("--width=%f", display.Width),
-		fmt.Sprintf("--height=%f", display.Height),
-		"--video-on-top",
-		"--fullscreen",
-		"--no-video-deco",
-		"--key-intf-show=false",
-		"--play-and-exit",
-	)
-	if err := cmd.Run(); err != nil {
-		log.Printf("Error running VLC: %v", err)
-	}
+	go func() {
+		cmd := exec.Command(
+			vlcBinaryPath,
+			video,
+			fmt.Sprintf("--video-x=%f", display.OriginX),
+			fmt.Sprintf("--video-y=%f", display.OriginY),
+			fmt.Sprintf("--width=%f", display.Width),
+			fmt.Sprintf("--height=%f", display.Height),
+			"--video-on-top",
+			"--fullscreen",
+			"--no-video-deco",
+			"--key-intf-show=false",
+			"--play-and-exit",
+		)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Error running VLC: %v", err)
+		}
+		t.mx.Lock()
+		t.running = false
+		t.mx.Unlock()
+	}()
 
-	t.mx.Lock()
-	t.running = false
-	t.mx.Unlock()
 	return true
 }
