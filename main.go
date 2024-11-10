@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -132,10 +133,22 @@ func main() {
 		displays[d.ScreenID] = d
 		videoRunners[d.ScreenID] = &VideoRunner{}
 	}
+
+	dirPath := "./videos"
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		log.Fatalf("Error running directory: %v", err)
+	}
+
+	videos := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		videos = append(videos, fmt.Sprintf("./videos/%s", entry.Name()))
+	}
+
 	state := &App{
 		Displays:      displays,
 		VideoRunners:  videoRunners,
-		Videos:        []string{"./videos/jesus.webm"},
+		Videos:        videos,
 		VLCBinaryPath: vlcBinaryPath,
 	}
 
