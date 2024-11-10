@@ -10,10 +10,11 @@ Then submit a GET request to see what screens and videos are available:
 $ curl -XGET http://localhost:8080/ | jq .
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-100   158  100   158    0     0  69911      0 --:--:-- --:--:-- --:--:-- 79000
+100   241  100   241    0     0   180k      0 --:--:-- --:--:-- --:--:--  235k
 {
   "videos": [
-    "/Users/stevenchu/Downloads/tongue-singing-choir.mp4"
+    "./videos/jesus.webm",
+    "./videos/tongue-singing.webm"
   ],
   "displays": [
     {
@@ -23,6 +24,14 @@ $ curl -XGET http://localhost:8080/ | jq .
       "origin_x": 0,
       "origin_y": 0,
       "index": 0
+    },
+    {
+      "screen_id": 2,
+      "width": 3440,
+      "height": 1440,
+      "origin_x": -953,
+      "origin_y": 900,
+      "index": 1
     }
   ]
 }
@@ -31,13 +40,13 @@ $
 
 Then submit a POST request to actually play one:
 ```bash
-$ curl -XPOST http://localhost:8080/video -d'{"video": "/Users/stevenchu/Downloads/tongue-singing-choir.mp4", "screen_id": 1}' | jq .
+$ $ curl -XPOST http://localhost:8080/video -d'{"video": "./videos/jesus.webm", "screen_id": 2}' | jq .
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
-100   191  100   111  100    80  42857  30888 --:--:-- --:--:-- --:--:-- 95500
+100   127  100    79  100    48  72878  44280 --:--:-- --:--:-- --:--:--  124k
 {
   "status": "success",
-  "message": "playing video /Users/stevenchu/Downloads/tongue-singing-choir.mp4 on screen 1"
+  "message": "playing video ./videos/jesus.webm on screen 2"
 }
 $
 ```
